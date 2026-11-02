@@ -1,0 +1,21 @@
+{
+  "name": "agridrone-citrus-disease-detection",
+  "version": "1.0.0",
+  "description": "Dalandan leaf disease detection web app with TensorFlow.js and LLM chatbot",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "keywords": ["agriculture", "disease-detection", "tensorflow", "vue", "llm"],
+  "author": "AgriDrone Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

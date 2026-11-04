@@ -14,53 +14,35 @@
             <span class="brand-text">AgriDrone</span>
           </router-link>
 
-          <!-- Mobile Menu Toggle -->
-          <button 
-            class="mobile-menu-toggle"
-            :class="{ active: mobileMenuOpen }"
-            @click="toggleMobileMenu"
-            :aria-expanded="mobileMenuOpen"
-            aria-label="Toggle navigation menu"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-
           <!-- Navigation Links -->
-          <div class="nav-links" :class="{ open: mobileMenuOpen }">
+          <div class="nav-links">
             <router-link 
               to="/" 
               class="nav-link"
-              @click="closeMobileMenu"
             >
               Home
             </router-link>
             <router-link 
               to="/detect" 
               class="nav-link nav-link-primary"
-              @click="closeMobileMenu"
             >
               Detect Disease
             </router-link>
             <router-link 
               to="/soil-quality"
               class="nav-link"
-              @click="closeMobileMenu"
             >
               Soil Monitoring
             </router-link>
             <router-link 
               to="/chat" 
               class="nav-link"
-              @click="closeMobileMenu"
             >
               AI Assistant
             </router-link>
             <router-link 
               to="/about" 
               class="nav-link"
-              @click="closeMobileMenu"
             >
               About
             </router-link>
@@ -79,8 +61,65 @@
       </nav>
     </header>
 
+    <!-- Mobile navigation -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <router-link to="/" class="mobile-nav-item" aria-label="Home">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+        </span>
+        <span>Home</span>
+      </router-link>
+      <router-link to="/detect" class="mobile-nav-item" aria-label="Detect disease">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M7 3H5a2 2 0 0 0-2 2v2m14-4h2a2 2 0 0 1 2 2v2M7 21H5a2 2 0 0 1-2-2v-2m14 4h2a2 2 0 0 0 2-2v-2M8 8h8v8H8z" /></svg>
+        </span>
+        <span>Detect</span>
+      </router-link>
+      <router-link to="/soil-quality" class="mobile-nav-item" aria-label="Soil monitoring">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M12 21V8m0 4c-4 0-6-2-6-5 3 0 6 1 6 5Zm0-3c0-4 2-6 6-6 0 3-2 6-6 6Z" /></svg>
+        </span>
+        <span>Soil</span>
+      </router-link>
+      <router-link to="/chat" class="mobile-nav-item" aria-label="AI chat">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.7 8.7 0 0 1-3.5-.7L4 20l1.5-3.6A7.2 7.2 0 0 1 4.5 12 7.5 7.5 0 0 1 12 4.5a7.5 7.5 0 0 1 8 7Z" /></svg>
+        </span>
+        <span>AI Chat</span>
+      </router-link>
+      <button
+        type="button"
+        class="mobile-nav-item mobile-nav-more"
+        :aria-expanded="mobileMenuOpen"
+        aria-controls="mobile-more-menu"
+        @click="toggleMobileMenu"
+      >
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+        </span>
+        <span>More</span>
+      </button>
+    </nav>
+
+    <div
+      v-if="mobileMenuOpen"
+      id="mobile-more-menu"
+      class="mobile-more-menu"
+      role="dialog"
+      aria-label="More navigation options"
+    >
+      <router-link to="/about" class="mobile-more-link" @click="closeMobileMenu">
+        <span class="mobile-more-icon" aria-hidden="true">i</span>
+        About AgriDrone
+      </router-link>
+      <button type="button" class="mobile-more-link" @click="toggleTheme">
+        <span aria-hidden="true">{{ isDarkMode ? '☀' : '☾' }}</span>
+        {{ isDarkMode ? 'Light mode' : 'Dark mode' }}
+      </button>
+    </div>
+
     <!-- Main Content -->
-    <main id="main-content" class="app-main">
+    <main id="main-content" class="app-main" @click="closeMobileMenu">
       <slot />
     </main>
 
@@ -149,7 +188,6 @@ export default {
     this.isDarkMode = savedTheme ? savedTheme === 'dark' : prefersDark;
     this.applyTheme();
 
-    // Close mobile menu when clicking outside
     document.addEventListener('click', this.handleOutsideClick);
     
     // Close mobile menu on escape key
@@ -181,8 +219,7 @@ export default {
     },
 
     handleOutsideClick(event) {
-      // Close mobile menu if clicking outside nav
-      if (!event.target.closest('.nav-wrapper')) {
+      if (!event.target.closest('.nav-wrapper') && !event.target.closest('.mobile-bottom-nav') && !event.target.closest('.mobile-more-menu')) {
         this.closeMobileMenu();
       }
     },
@@ -331,41 +368,6 @@ export default {
   background: var(--primary-light);
 }
 
-/* Mobile Menu Toggle */
-.mobile-menu-toggle {
-  display: none;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 2rem;
-  height: 2rem;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.mobile-menu-toggle span {
-  width: 2rem;
-  height: 0.25rem;
-  background: var(--text);
-  border-radius: 0.125rem;
-  transition: var(--transition);
-  transform-origin: 1px;
-}
-
-.mobile-menu-toggle.active span:first-child {
-  transform: rotate(45deg);
-}
-
-.mobile-menu-toggle.active span:nth-child(2) {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.mobile-menu-toggle.active span:nth-child(3) {
-  transform: rotate(-45deg);
-}
-
 /* Main Content */
 .app-main {
   flex: 1;
@@ -446,40 +448,15 @@ export default {
   font-style: italic;
 }
 
-/* Mobile Responsive */
+/* Tablet layout */
 @media (max-width: 1099px) {
-  .mobile-menu-toggle {
-    display: flex;
-  }
-
   .nav-links {
-    position: fixed;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--card);
-    box-shadow: var(--shadow-lg);
-    flex-direction: column;
-    align-items: stretch;
-    padding: var(--spacing-lg);
     gap: var(--spacing-sm);
-    transform: translateY(-100%);
-    visibility: hidden;
-    opacity: 0;
-    transition: all 0.3s ease;
-  }
-
-  .nav-links.open {
-    transform: translateY(0);
-    visibility: visible;
-    opacity: 1;
   }
 
   .nav-link {
-    width: 100%;
-    text-align: center;
-    padding: var(--spacing-md);
-    border-radius: var(--radius);
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-sm);
   }
 
   .footer-content {
@@ -490,6 +467,12 @@ export default {
 
   .footer-bottom {
     text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
   }
 }
 

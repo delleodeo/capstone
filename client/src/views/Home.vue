@@ -257,6 +257,7 @@ export default {
 }
 
 .catalog-tab {
+  min-height: 2.5rem;
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -323,6 +324,71 @@ export default {
 
 .catalog-note a {
   color: var(--primary);
+}
+
+@media (max-width: 600px) {
+  .supported-catalog .section-header h2 {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .supported-catalog .section-header p {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .catalog-controls {
+    gap: var(--spacing-lg);
+  }
+
+  .catalog-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+    width: 100%;
+  }
+
+  .catalog-tab {
+    width: 100%;
+    padding: 0.625rem 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .catalog-search {
+    width: min(100%, 18rem);
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.3;
+  }
+
+  .catalog-search input {
+    min-height: 3rem;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .disease-card {
+    padding: var(--spacing-lg);
+  }
+
+  .disease-card h3 {
+    margin-bottom: 0.625rem;
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+
+  .disease-card p {
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .catalog-category,
+  .disease-card details {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
 }
 
 /* Hero Section */

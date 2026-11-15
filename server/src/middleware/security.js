@@ -5,8 +5,8 @@ import { logger } from '../utils/logger.js';
 
 // Rate limiting configuration
 export const apiLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  windowMs: 10000000, // 15 minutes
+  max: 10000000,
   message: {
     error: 'Too many requests from this IP, please try again later',
     retryAfter: '15 minutes'

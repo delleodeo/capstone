@@ -60,21 +60,6 @@
     </div>
 
     <section class="kpi-grid" aria-label="Field overview">
-      <article class="kpi-card soil-kpi">
-        <div class="kpi-topline"><span>Soil health</span><span class="trend positive">Citrus range</span></div>
-        <div class="kpi-value">{{ assessment?.score ?? '--' }}<small>/100</small></div>
-        <div class="kpi-footer">
-          <span>{{ assessment?.grade || 'Waiting for sensor' }}</span>
-          <div class="mini-progress"><i :style="{ width: `${assessment?.score || 0}%` }"></i></div>
-        </div>
-      </article>
-
-      <article class="kpi-card moisture-kpi">
-        <div class="kpi-topline"><span>Root-zone moisture</span><span>{{ freshnessLabel }}</span></div>
-        <div class="kpi-value">{{ formatNumber(latestSoil?.moisture, 1) }}<small>%</small></div>
-        <div class="kpi-footer"><span>{{ metricStatus('moisture') }}</span><span>Ideal 35-55%</span></div>
-      </article>
-
       <article class="kpi-card weather-kpi">
         <div class="kpi-topline"><span>{{ days }}-day rainfall</span><span>Forecast</span></div>
         <div class="kpi-value">{{ formatNumber(totalRainfall, 1) }}<small>mm</small></div>
@@ -95,81 +80,7 @@
     </section>
 
     <section class="dashboard-grid">
-      <article class="panel soil-panel">
-        <header class="panel-header">
-          <div>
-            <span class="section-kicker">Soil monitoring</span>
-            <h2>Root-zone condition</h2>
-            <p>Demo telemetry uses the same schema as your future IoT device.</p>
-          </div>
-          <div class="panel-actions">
-            <span class="device-badge"><i></i>{{ latestSoil?.deviceId || 'Connecting' }}</span>
-            <button class="text-button" type="button" :disabled="loading.soil" @click="refreshSoil">
-              {{ loading.soil ? 'Loading...' : 'Refresh' }}
-            </button>
-          </div>
-        </header>
-
-        <div class="soil-overview">
-          <div class="score-ring" :style="{ '--score-angle': `${(assessment?.score || 0) * 3.6}deg` }">
-            <div><strong>{{ assessment?.score ?? '--' }}</strong><span>Soil score</span></div>
-          </div>
-          <div class="soil-summary-copy">
-            <span :class="['health-label', soilHealthClass]">{{ assessment?.grade || 'Awaiting reading' }}</span>
-            <h3>{{ soilHeadline }}</h3>
-            <p>{{ soilSummary }}</p>
-          </div>
-        </div>
-
-        <div class="metric-grid">
-          <article v-for="metric in soilMetrics" :key="metric.key" class="metric-card">
-            <div class="metric-heading">
-              <span>{{ metric.label }}</span>
-              <i :class="['metric-status', metric.status]"></i>
-            </div>
-            <strong>{{ metric.value }}<small>{{ metric.unit }}</small></strong>
-            <div class="range-track"><i :class="metric.status" :style="{ width: `${metric.score}%` }"></i></div>
-            <div class="range-caption"><span>{{ capitalize(metric.status) }}</span><span>Ideal {{ metric.range }}</span></div>
-          </article>
-        </div>
-
-        <div class="trend-block">
-          <div class="trend-header">
-            <div>
-              <span class="mini-label">Moisture trend</span>
-              <strong>Last {{ soilHistory.length }} demo readings</strong>
-            </div>
-            <span class="legend"><i></i> Moisture %</span>
-          </div>
-          <svg class="sparkline" viewBox="0 0 640 120" role="img" aria-label="Recent soil moisture trend">
-            <defs>
-              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#20a464" stop-opacity="0.26"/>
-                <stop offset="100%" stop-color="#20a464" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <line v-for="y in [20, 60, 100]" :key="y" x1="0" :y1="y" x2="640" :y2="y" class="grid-line"/>
-            <polygon v-if="sparklinePoints" :points="`0,120 ${sparklinePoints} 640,120`" fill="url(#areaFill)"/>
-            <polyline v-if="sparklinePoints" :points="sparklinePoints" fill="none" stroke="#168a54" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-
-        <details class="demo-controls">
-          <summary>
-            <span><strong>Demo sensor controls</strong><small>Adjust values before connecting the physical IoT device</small></span>
-            <span class="summary-action">Configure</span>
-          </summary>
-          <div class="demo-form">
-            <label v-for="field in demoFields" :key="field.key">
-              <span>{{ field.label }} <small>{{ field.unit }}</small></span>
-              <input v-model.number="soilForm[field.key]" type="number" :step="field.step" :min="field.min" :max="field.max">
-            </label>
-          </div>
-          <button class="primary-button" type="button" :disabled="loading.saving" @click="saveDemoReading">
-            {{ loading.saving ? 'Saving reading...' : 'Save demo reading' }}
-          </button>
-        </details>
-      </article>
+      <NpkMonitor @npk-update="handleNpkUpdate" />
 
       <article class="panel weather-panel">
         <header class="panel-header compact">
@@ -307,6 +218,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import NpkMonitor from '../components/NpkMonitor.vue';
 import {
   fetchWeather,
   fetchLocationName,
@@ -315,6 +227,7 @@ import {
   postSoilReading,
   predictSinturisYield,
 } from '../utils/api.js';
+import { mergeNpkAssessment, readingHasAllNutrients } from '../utils/soilMonitor.js';
 
 const lat = ref(14.5995);
 const lon = ref(120.9842);
@@ -324,10 +237,12 @@ const farmSizeHectares = ref(4);
 const latestSoil = ref(null);
 const soilHistory = ref([]);
 const assessment = ref(null);
+const baseAssessment = ref(null);
 const weatherData = ref(null);
 const weatherMeta = ref(null);
 const locationName = ref('');
 const prediction = ref(null);
+const liveNpkReading = ref(null);
 const lastSynced = ref(null);
 const errorMessage = ref('');
 const loading = reactive({ soil: false, weather: false, yield: false, saving: false });
@@ -393,11 +308,8 @@ const yieldFactors = computed(() => {
   const factors = prediction.value?.factors;
   if (!factors) return [];
   return [
-    ['Soil moisture', factors.moistureFactor],
-    ['Air temperature', factors.temperatureFactor],
     ['Forecast rainfall', factors.rainfallFactor],
     ['NPK balance', factors.nutrientFactor],
-    ['Soil pH', factors.phFactor],
   ].map(([label, value]) => {
     const percent = Math.round((Number(value) || 0) * 100);
     return { label, percent, status: percent >= 90 ? 'optimal' : percent >= 75 ? 'watch' : 'attention' };
@@ -474,6 +386,10 @@ async function loadSoil() {
     const response = await getLatestSoil();
     latestSoil.value = response.latest || response;
     assessment.value = response.assessment || latestSoil.value?.assessment || null;
+    baseAssessment.value = assessment.value;
+    if (liveNpkReading.value) {
+      assessment.value = mergeNpkAssessment(baseAssessment.value, liveNpkReading.value);
+    }
     syncForm(latestSoil.value);
   } catch (error) {
     errorMessage.value = error.message || 'Unable to load the soil reading.';
@@ -520,6 +436,7 @@ async function predict() {
   if (!latestSoil.value) return;
   loading.yield = true;
   try {
+    const npk = liveNpkReading.value || latestSoil.value;
     prediction.value = await predictSinturisYield({
       baseYield: baseYield.value,
       farmSizeHectares: farmSizeHectares.value,
@@ -527,10 +444,10 @@ async function predict() {
       avgTemp: forecastAverageTemperature.value,
       precipitation: totalRainfall.value,
       ph: latestSoil.value.ph,
-      n: latestSoil.value.n,
-      p: latestSoil.value.p,
-      k: latestSoil.value.k,
-      soilSource: latestSoil.value.source,
+      n: npk.nitrogen ?? npk.n,
+      p: npk.phosphorus ?? npk.p,
+      k: npk.potassium ?? npk.k,
+      soilSource: liveNpkReading.value ? 'firebase-npk' : latestSoil.value.source,
       weatherSource: weatherData.value ? 'open-meteo' : 'fallback',
       latitude: lat.value,
       longitude: lon.value,
@@ -541,6 +458,14 @@ async function predict() {
   } finally {
     loading.yield = false;
   }
+}
+
+function handleNpkUpdate({ reading, state }) {
+  liveNpkReading.value = state === 'live' && readingHasAllNutrients(reading) ? reading : null;
+  assessment.value = liveNpkReading.value
+    ? mergeNpkAssessment(baseAssessment.value, liveNpkReading.value)
+    : baseAssessment.value;
+  if (latestSoil.value) predict();
 }
 
 async function refreshSoil() {
@@ -653,7 +578,7 @@ onMounted(async () => {
   --leaf-dark: #0d633b;
   --lime: #b8dc76;
   --orange: #eb7b3c;
-  width: min(1380px, calc(100% - 40px));
+  width: min(1200px, calc(100% - 40px));
   margin: 0 auto;
   padding: 36px 0 72px;
   color: var(--ink);
@@ -722,7 +647,7 @@ onMounted(async () => {
 .alert span { flex: 1; }
 .alert button { border: 0; background: none; color: inherit; font-weight: 800; cursor: pointer; }
 
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0; }
+.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0; }
 .kpi-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); box-shadow: 0 8px 30px rgba(18,61,45,.055); }
 .kpi-topline, .kpi-footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: var(--muted); font-size: .73rem; }
 .kpi-topline > span:first-child { color: var(--ink); text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
@@ -859,19 +784,19 @@ onMounted(async () => {
 .confidence-track i { display: block; height: 100%; border-radius: inherit; background: #b8dc76; }
 .confidence-row > strong { color: #fff; font-size: .72rem; }
 .factor-heading { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
-.factor-heading strong { font-size: .86rem; }
-.factor-heading span { color: var(--muted); font-size: .66rem; }
+.factor-heading strong { font-size: .98rem; }
+.factor-heading span { color: var(--muted); font-size: .76rem; }
 .factor-list { display: grid; gap: 13px; }
-.factor-row { display: grid; grid-template-columns: 105px 1fr 34px; gap: 10px; align-items: center; font-size: .7rem; }
-.factor-row > span { color: #506159; }
+.factor-row { display: grid; grid-template-columns: 130px 1fr 42px; gap: 12px; align-items: center; font-size: .8rem; }
+.factor-row > span { color: var(--muted); }
 .factor-row > div { height: 6px; overflow: hidden; border-radius: 99px; background: #ebf0ed; }
 .factor-row i { display: block; height: 100%; border-radius: inherit; }
-.factor-row > strong { text-align: right; font-size: .7rem; }
+.factor-row > strong { text-align: right; font-size: .82rem; }
 .insight-panel { background: var(--bg-secondary); }
 .insight-panel .mini-label { color: var(--leaf); }
-.insight-panel ul { display: grid; gap: 10px; margin: 14px 0; padding-left: 17px; color: #41554c; font-size: .76rem; }
+.insight-panel ul { display: grid; gap: 10px; margin: 14px 0; padding-left: 17px; color: var(--muted); font-size: .82rem; }
 .insight-panel li::marker { color: var(--orange); }
-.insight-panel p { margin: 0; padding-top: 12px; border-top: 1px solid #e1e9e3; color: var(--muted); font-size: .64rem; line-height: 1.45; }
+.insight-panel p { margin: 0; padding-top: 12px; border-top: 1px solid #e1e9e3; color: var(--muted); font-size: .72rem; line-height: 1.5; }
 .empty-state { padding: 38px; border-radius: 14px; text-align: center; color: var(--muted); background: var(--soft); }
 .error-state { color: #a64829; background: #fff2ec; }
 .model-details { margin-top: 16px; border-top: 1px solid #e6ece8; }
@@ -893,7 +818,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 760px) {
-  .monitor-page { width: min(100% - 24px, 1380px); padding-top: 18px; }
+  .monitor-page { width: min(100% - 24px, 1200px); padding-top: 18px; }
   .hero-panel { padding: 30px 22px; border-radius: 22px; }
   .hero-copy h1 { font-size: 2.55rem; }
   .coordinate-grid { grid-template-columns: 1fr 1fr; }

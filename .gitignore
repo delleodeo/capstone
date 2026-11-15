@@ -9,6 +9,7 @@ yarn-error.log*
 .env.example
 .env.local
 .env.*.local
+!client/.env.example
 
 # Production builds
 dist/

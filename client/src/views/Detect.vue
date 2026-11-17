@@ -141,6 +141,9 @@
                 v-else-if="recommendation && recommendationTarget"
                 :recommendation="recommendation"
                 :disease-key="recommendationTarget.diseaseKey"
+                :language="recommendationLanguage"
+                :is-loading-language="isLoadingRecommendation"
+                @language-change="changeRecommendationLanguage"
               />
             </div>
 
@@ -220,6 +223,7 @@ export default {
       analysisError: null,
       predictionResult: null,
       recommendation: null,
+      recommendationLanguage: 'en',
       isLoadingRecommendation: false,
       recommendationError: null,
       isEnhancing: false,
@@ -311,6 +315,7 @@ export default {
           window.showToast?.(`${response.predictions.length} detection(s) found`, 'success');
         } else {
           this.recommendation = null;
+          this.recommendationLanguage = 'en';
           window.showToast?.('No supported target detected', 'info');
         }
       } catch (error) {
@@ -325,8 +330,43 @@ export default {
       }
     },
 
-    buildLocalRecommendation(prediction) {
+    buildLocalRecommendation(prediction, language = 'en') {
       if (!prediction) return null;
+
+      if (language === 'tl') {
+        const isPest = prediction.category === 'pest' || PEST_KEYS.has(prediction.diseaseKey);
+        const subject = isPest ? 'peste' : 'sakit';
+
+        return {
+          displayName: prediction.displayName,
+          category: prediction.category,
+          modelClass: prediction.className,
+          description: `Maaaring ${subject} ito sa citrus na nakita ng modelo. Suriin ang naka-box na bahagi at kumpirmahin ang resulta sa isang lokal na agricultural technician.`,
+          summary: `Maaaring may ${prediction.displayName} ang halaman. Kumpirmahin muna sa pamamagitan ng pagsusuri sa halaman bago magsagawa ng anumang paggamot.`,
+          symptoms: [
+            `Suriin ang mga dahon, bagong usbong, sanga, at bunga sa paligid ng nakita para sa mga palatandaan ng ${subject}.`
+          ],
+          causes: [
+            'Ang resulta ay batay sa larawan lamang at maaaring maapektuhan ng kondisyon ng larawan o kapaligiran.'
+          ],
+          treatmentSteps: [
+            'Markahan ang apektadong halaman at obserbahan ito nang mas madalas.',
+            'Alisin ang malubhang apektadong bahagi kung ligtas at praktikal, at itapon ito nang maayos.',
+            'Gumamit ng integrated pest management at sundin ang mga aprubadong tagubilin sa inyong lugar.'
+          ],
+          preventionSteps: [
+            'Regular na siyasatin ang bagong tubo, dahon, at bunga.',
+            'Panatilihing malinis ang mga kagamitan at paligid ng taniman.',
+            'Iwasan ang hindi kinakailangang paggamit ng malawak na spectrum na pestisidyo upang maprotektahan ang mga kapaki-pakinabang na insekto.'
+          ],
+          whenToEscalate: [
+            'Kumalat ang problema sa maraming puno.',
+            'Mabilis ang pagkasira, nalalagas ang bunga, o patuloy na lumalala ang kondisyon.'
+          ],
+          severity: 'medium',
+          disclaimer: 'Gabay lamang ito—ipakumpirma ang pagkakakilanlan at paggamot sa isang lokal na agricultural technician o tanggapan ng DA.'
+        };
+      }
 
       if (prediction.diseaseKey === 'healthy') {
         return {
@@ -401,20 +441,27 @@ export default {
         : this.getClassDescription(prediction);
     },
 
-    async loadRecommendation() {
+    async loadRecommendation(language = this.recommendationLanguage) {
       const target = this.recommendationTarget;
       const resultReference = this.predictionResult;
-      if (!target || !resultReference) return;
+      if (!target || !resultReference) return false;
 
       this.isLoadingRecommendation = true;
       this.recommendationError = null;
+      if (!target.recommendationKey) {
+        this.recommendation = this.buildLocalRecommendation(target, language);
+        this.isLoadingRecommendation = false;
+        return Boolean(this.recommendation);
+      }
+
       const llmKey = target.recommendationKey || target.className.replace(/_/g, '-');
       const llmContext = {
         displayName: target.displayName,
         category: target.category,
         modelClass: target.className,
         confidence: Math.round(target.confidence * 100),
-        request: 'Start with a short, plain-language description of what this detected class is. Then provide cautious symptoms, causes, treatment, prevention, and escalation guidance. Do not infer severity from confidence. Do not recommend treatment for beneficial or other classes.'
+        language,
+        request: `Start with a short, plain-language description of what this detected class is. Then provide cautious symptoms, causes, treatment, prevention, and escalation guidance. Do not infer severity from confidence. Do not recommend treatment for beneficial or other classes. Write every field in ${language === 'tl' ? 'Tagalog (Filipino)' : 'simple English'}.`
       };
 
       try {
@@ -428,9 +475,14 @@ export default {
             description: this.getRecommendationDescription(response.data, target),
             summary: response.data.summary || `Possible ${target.displayName} detected.`
           };
+          return true;
         }
       } catch (error) {
         if (this.predictionResult !== resultReference) return;
+        if (language === 'tl') {
+          this.recommendation = this.buildLocalRecommendation(target, 'tl');
+          return Boolean(this.recommendation);
+        }
         try {
           if (target.recommendationKey) {
             const response = await getRecommendation(target.recommendationKey);
@@ -446,14 +498,37 @@ export default {
           } else {
             this.recommendation = this.buildLocalRecommendation(target);
           }
+          return true;
         } catch (fallbackError) {
           if (this.predictionResult === resultReference) {
             this.recommendation = this.buildLocalRecommendation(target);
             if (!this.recommendation) this.recommendationError = fallbackError.message;
           }
+          return Boolean(this.recommendation);
         }
       } finally {
         if (this.predictionResult === resultReference) this.isLoadingRecommendation = false;
+      }
+    },
+
+    async changeRecommendationLanguage(language) {
+      if (!['en', 'tl'].includes(language) || language === this.recommendationLanguage || this.isLoadingRecommendation) {
+        return;
+      }
+
+      const previousLanguage = this.recommendationLanguage;
+      this.recommendationLanguage = language;
+
+      if (language === 'tl' && !this.recommendationTarget.recommendationKey) {
+        this.recommendation = this.buildLocalRecommendation(this.recommendationTarget, 'tl');
+        return;
+      }
+
+      const loaded = await this.loadRecommendation(language);
+
+      if (!loaded) {
+        this.recommendationLanguage = previousLanguage;
+        window.showToast?.('Tagalog recommendations are temporarily unavailable.', 'error');
       }
     },
 
@@ -471,7 +546,7 @@ export default {
         const response = await generateAIRecommendation(target.recommendationKey, {
           confidence: Math.round(target.confidence * 100),
           severity: this.getManagementPriority(target.recommendationKey),
-          userContext: 'User requested enhanced management guidance for a Roboflow detection.'
+          userContext: `User requested enhanced management guidance for a Roboflow detection. Write the recommendation in ${this.recommendationLanguage === 'tl' ? 'Tagalog (Filipino)' : 'simple English'}.`
         });
         this.recommendation = {
           ...response.data,
@@ -501,6 +576,7 @@ export default {
     clearResults() {
       this.predictionResult = null;
       this.recommendation = null;
+      this.recommendationLanguage = 'en';
       this.analysisStep = 0;
       this.analysisError = null;
       this.isLoadingRecommendation = false;

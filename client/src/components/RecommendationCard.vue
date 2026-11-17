@@ -2,7 +2,29 @@
 <template>
   <div class="recommendation-card">
     <div class="recommendation-header">
-      <h3>💡 Treatment Recommendations</h3>
+      <div class="recommendation-heading">
+        <h3>💡 Treatment Recommendations</h3>
+        <div class="language-switcher" role="group" aria-label="Recommendation language">
+          <button
+            type="button"
+            class="language-button"
+            :class="{ active: language === 'en' }"
+            :disabled="isLoadingLanguage"
+            @click="$emit('language-change', 'en')"
+          >
+            English
+          </button>
+          <button
+            type="button"
+            class="language-button"
+            :class="{ active: language === 'tl' }"
+            :disabled="isLoadingLanguage"
+            @click="$emit('language-change', 'tl')"
+          >
+            Tagalog
+          </button>
+        </div>
+      </div>
       <div v-if="recommendation.severity" class="severity-badge" :class="`severity-${recommendation.severity}`">
         {{ recommendation.severity.toUpperCase() }} PRIORITY
       </div>
@@ -107,6 +129,14 @@ export default {
     diseaseKey: {
       type: String,
       required: true
+    },
+    language: {
+      type: String,
+      default: 'en'
+    },
+    isLoadingLanguage: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -145,6 +175,40 @@ export default {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--spacing-md);
+}
+
+.recommendation-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.language-switcher {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.language-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.language-button.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary, #fff);
+}
+
+.language-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .recommendation-header h3 {

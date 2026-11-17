@@ -28,6 +28,12 @@
             >
               Detect Disease
             </router-link>
+            <router-link
+              to="/dashboard"
+              class="nav-link"
+            >
+              Farmer Dashboard
+            </router-link>
             <router-link 
               to="/soil-quality"
               class="nav-link"
@@ -111,6 +117,10 @@
       <router-link to="/about" class="mobile-more-link" @click="closeMobileMenu">
         <span class="mobile-more-icon" aria-hidden="true">i</span>
         About AgriDrone
+      </router-link>
+      <router-link to="/dashboard" class="mobile-more-link" @click="closeMobileMenu">
+        <span class="mobile-more-icon" aria-hidden="true">⌂</span>
+        Farmer Dashboard
       </router-link>
       <button type="button" class="mobile-more-link" @click="toggleTheme">
         <span aria-hidden="true">{{ isDarkMode ? '☀' : '☾' }}</span>

@@ -183,6 +183,7 @@ import {
   getRecommendation
 } from '../utils/api.js';
 import { CLASS_CATALOG_BY_LABEL } from '../../../shared/classCatalog.js';
+import { getCurrentFarmerId, saveDetectionHistory } from '../utils/farmerData.js';
 
 const PEST_KEYS = new Set([
   'citrus-psyllid',
@@ -308,6 +309,10 @@ export default {
         if (requestId !== this.analysisRequestId || controller.signal.aborted) return;
 
         this.predictionResult = this.normalizeDetectionResult(response);
+        saveDetectionHistory(
+          this.predictionResult,
+          getCurrentFarmerId()
+        );
         this.currentStep = 3;
 
         if (response.status === 'detected') {

@@ -4,6 +4,7 @@ import Home from '../views/Home.vue';
 import Detect from '../views/Detect.vue';
 import Chat from '../views/Chat.vue';
 import About from '../views/About.vue';
+import Dashboard from '../views/Dashboard.vue';
 import SoilQuality from '../views/SoilQuality.vue';
 import Monitoring from '../views/Monitoring.vue';
 
@@ -42,6 +43,15 @@ const routes = [
     meta: {
       title: 'About - AgriDrone',
       description: 'Learn about AgriDrone citrus disease detection technology'
+    }
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard,
+    meta: {
+      title: 'Farmer Dashboard - AgriDrone',
+      description: 'Manage your farm profile and monitor crop conditions'
     }
   },
   {

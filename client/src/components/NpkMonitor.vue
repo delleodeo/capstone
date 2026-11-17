@@ -149,6 +149,7 @@ import {
   readingHasAllNutrients,
   normalizeReading,
 } from '../utils/soilMonitor.js';
+import { saveNpkReading, readNpkHistory } from '../utils/farmerData.js';
 
 const emit = defineEmits(['npk-update']);
 const nutrients = [
@@ -347,6 +348,7 @@ function startDatabaseListeners() {
     if (!reading) return;
     latestReading.value = reading;
     history.value = addUniqueReading(history.value, reading);
+    saveNpkReading(reading);
     accessError.value = false;
     connectionError.value = '';
   }, (error) => {
@@ -364,6 +366,7 @@ function stopDatabaseListeners() {
 }
 
 onMounted(() => {
+  history.value = readNpkHistory();
   clockHandle = window.setInterval(() => { now.value = Date.now(); }, 1000);
   if (!firebaseConfigured.value) {
     connectionError.value = 'Firebase client configuration is missing. Add the VITE_FIREBASE_* fields from .env.example.';
